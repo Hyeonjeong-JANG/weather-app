@@ -1,4 +1,13 @@
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.mysql.cj.util.DnsSrv;
+import shop.mtcoding.weather.WeatherResponseDTO;
+import shop.mtcoding.weather._core.util.ApiExplorer;
+
+import java.io.IOException;
 import java.sql.*;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.HashSet;
 import java.util.Scanner;
 import java.util.Set;
@@ -27,15 +36,18 @@ public class Main {
         String jdbcUrl = "jdbc:mysql://localhost:3306/weather_db";
         String username = "root";
         String password = "1234";
+        String nx = null;
+        String ny = null;
         Scanner sc = new Scanner(System.in);
-
+        String level3 = null;
         // 내가 뭘 하고 싶냐면 결과 내에서 찾고 다시 결과 내에서 찾는 것을 하고 싶거든?
         // MySQL에 연결해야 한다. try-resources로 하면 close하지 않아도 되어서 편함 -> 그런데 이렇게 하면 또 한 번 하고 다 닫아버려서 하나의 try-resources문에 과정을 다 넣어야 함.
-
+        Set<String> hashLevel1 = new HashSet<>();
+        Set<String> hashLevel2 = new HashSet<>();
+        Set<String> hashLevel3 = new HashSet<>();
         try (Connection connection = DriverManager.getConnection(jdbcUrl, username, password)) {
             // 1. 시 리스트 보여주고 시 입력받기
             String queryLevel1 = "SELECT level1 FROM weather";
-            Set<String> hashLevel1 = new HashSet<>();
 
             try (PreparedStatement preparedStatement = connection.prepareStatement(queryLevel1)) {
                 try (ResultSet resultSet = preparedStatement.executeQuery()) {
@@ -49,12 +61,12 @@ public class Main {
             } catch (SQLException e) {
                 throw new RuntimeException(e);
             }
+
             // 시를 입력하면 여기에 담김
             String level1 = sc.nextLine();
 
             // 2. 군/구 리스트 보여주고 군/구 입력받기
             String queryLevel2 = "SELECT level2 FROM weather where level1 = ?";
-            Set<String> hashLevel2 = new HashSet<>();
 
             try (PreparedStatement preparedStatement = connection.prepareStatement(queryLevel2)) {
                 preparedStatement.setString(1, level1);
@@ -74,7 +86,7 @@ public class Main {
 
             // 3. 동 리스트 보여주고 동 입력받기
             String queryLevel3 = "SELECT level3 FROM weather where level2 = ?";
-            Set<String> hashLevel3 = new HashSet<>();
+
 
             try (PreparedStatement preparedStatement = connection.prepareStatement(queryLevel3)) {
                 preparedStatement.setString(1, level2);
@@ -90,18 +102,20 @@ public class Main {
                 throw new RuntimeException(e);
             }
             // 동을 입력하면 여기에 담김
-            String level3 = sc.nextLine();
+            level3 = sc.nextLine();
 
-            // 4. 동 이름으로 위 경도 받기
+            // 4. URL 요청 (동 이름을 토대로 위경도 받기)
+            // 4-1. 동 이름으로 위 경도 받기
             String queryNxNy = "SELECT nx, ny FROM weather where level3 = ?";
-//
+//            String nx;
+//            String ny;
             try (PreparedStatement preparedStatement = connection.prepareStatement(queryNxNy)) {
                 preparedStatement.setString(1, level3);
                 try (ResultSet resultSet = preparedStatement.executeQuery()) {
                     while (resultSet.next()) {
-                        String nx = resultSet.getString("nx");
-                        String ny = resultSet.getString("ny");
-                        System.out.println("nx: " + nx + ", ny: " + ny);
+                        nx = resultSet.getString("nx");
+                        ny = resultSet.getString("ny");
+//                        System.out.println("nx: " + nx + ", ny: " + ny);
                     }
                 }
             } catch (SQLException e) {
@@ -111,9 +125,37 @@ public class Main {
         } catch (Exception e) {
             e.getMessage();
         }
+        // URL요청
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd");
 
-        // 4. URL 요청 (동 이름을 토대로 위경도 받기)
-        // 5. 파싱 (t1h) - Class DTO 만들고, Gson으로 파싱하기
-        // 6. 콘솔에 현재 기온 출력하기
+        String uri = "http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getUltraSrtNcst";
+        String serviceKey = "cdLwxcHMoWudSBeScW577Us8fZoHm08TRN%2BEyK%2F7IUy0xrSFVwPwM6AZ%2FpkBqenL0rDpnkjdbFTs9epraZXifw%3D%3D";
+        String baseDate = LocalDate.now().format(formatter);
+        String baseTime = "0600";
+
+        try {
+            String response = ApiExplorer.get(uri, serviceKey, baseDate, baseTime, nx, ny);
+//            System.out.println("Response: " + response);
+
+            // 5. 파싱 (t1h) - Class DTO 만들고, Gson으로 파싱하기
+            // T1H 데이터 추출 및 출력
+
+            String responseBody = ApiExplorer.get(
+                    uri,
+                    serviceKey,
+                    baseDate,
+                    baseTime,
+                    nx,
+                    ny
+            );
+            Gson gson = new GsonBuilder().create();
+            WeatherResponseDTO weatherResponseDTO = gson.fromJson(responseBody, WeatherResponseDTO.class);
+            // 6. 콘솔에 현재 기온 출력하기
+
+            System.out.println(level3 + "의 현재 온도는 " + weatherResponseDTO.response.body.items.item.get(3).obsrValue);
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 }
+
