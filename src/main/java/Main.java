@@ -107,15 +107,12 @@ public class Main {
             // 4. URL 요청 (동 이름을 토대로 위경도 받기)
             // 4-1. 동 이름으로 위 경도 받기
             String queryNxNy = "SELECT nx, ny FROM weather where level3 = ?";
-//            String nx;
-//            String ny;
             try (PreparedStatement preparedStatement = connection.prepareStatement(queryNxNy)) {
                 preparedStatement.setString(1, level3);
                 try (ResultSet resultSet = preparedStatement.executeQuery()) {
                     while (resultSet.next()) {
                         nx = resultSet.getString("nx");
                         ny = resultSet.getString("ny");
-//                        System.out.println("nx: " + nx + ", ny: " + ny);
                     }
                 }
             } catch (SQLException e) {
@@ -135,11 +132,8 @@ public class Main {
 
         try {
             String response = ApiExplorer.get(uri, serviceKey, baseDate, baseTime, nx, ny);
-//            System.out.println("Response: " + response);
 
             // 5. 파싱 (t1h) - Class DTO 만들고, Gson으로 파싱하기
-            // T1H 데이터 추출 및 출력
-
             String responseBody = ApiExplorer.get(
                     uri,
                     serviceKey,
