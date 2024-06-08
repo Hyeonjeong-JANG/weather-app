@@ -10,10 +10,15 @@ repositories {
 }
 
 dependencies {
+    // JUnit 테스트 할 때 사용될 JUnit을 관리하기 위해 씀
     testImplementation platform('org.junit:junit-bom:5.9.1')
+    // JUnit 테스트 하려고 씀
     testImplementation 'org.junit.jupiter:junit-jupiter'
+    // Apache에서 제공하는 HTTP 클라이언트 라이브러리: 서버와의 HTTP 통신을 처리하기 위해 씀
     implementation group: 'org.apache.httpcomponents', name: 'httpclient', version: '4.5.13'
+    // JSON 파싱 및 직렬화 라이브러리: JSON 데이터를 파싱하거나 생성하기 위해 씀
     implementation group: 'com.google.code.gson', name: 'gson', version: '2.7'
+    // Java 애플리케이션에서 MySQL 데이터베이스에 접속할 수 있도록 해주는 JDBC 드라이버
     implementation 'mysql:mysql-connector-java:8.0.33'
 }
 
